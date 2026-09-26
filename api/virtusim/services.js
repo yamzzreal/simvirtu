@@ -16,37 +16,37 @@ export default async function handler(req, res) {
     });
   }
 
-  // Ambil parameter dari frontend
-  const country = req.query.country || "indo";
-  const service = req.query.service || "";
-
   try {
-    // Parameter VirtuSIM
-    const params = new URLSearchParams({
-      api_key: key,
-      action: "services",
-      country: country,
-      service: "Whatsapp",
-    });
+    // Gunakan parameter yang sama
+    // dengan kode awal project
+    const country = req.query.country || "Russia";
 
-    // Endpoint VirtuSIM
     const url =
-      `https://virtusim.com/api/v2/json.php?${params.toString()}`;
+      `https://virtusim.com/api/v2/json.php` +
+      `?api_key=${encodeURIComponent(key)}` +
+      `&action=services` +
+      `&country=${encodeURIComponent(country)}` +
+      `&service=`;
+
+    console.log("VirtuSIM URL:", url.replace(key, "***"));
 
     // Request ke VirtuSIM
     const response = await fetch(url);
 
-    // Pastikan HTTP response berhasil
     if (!response.ok) {
       throw new Error(
         `VirtuSIM HTTP ${response.status}`
       );
     }
 
-    // Parse JSON
     const data = await response.json();
 
-    // Periksa response VirtuSIM
+    console.log(
+      "VirtuSIM Response:",
+      JSON.stringify(data)
+    );
+
+    // Cek response VirtuSIM
     if (!data.status) {
       return res.status(502).json({
         success: false,
@@ -65,20 +65,16 @@ export default async function handler(req, res) {
     data.data = (data.data || []).map((item) => ({
       ...item,
 
-      // Harga asli VirtuSIM
       basePrice: Number(
         item.price || 0
       ),
 
-      // Harga setelah markup
       price:
         Number(item.price || 0) +
         markup,
     }));
 
-    // PENTING:
-    // Response tetap menggunakan struktur
-    // VirtuSIM seperti sebelumnya.
+    // Pertahankan format response asli
     return res.status(200).json(data);
 
   } catch (error) {
