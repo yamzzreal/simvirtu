@@ -3,10 +3,11 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       success: false,
+      message: "Method tidak diizinkan",
     });
   }
 
-  // Ambil API Key dari Environment Variable
+  // Ambil API Key
   const key = process.env.VIRTUSIM_API_KEY;
 
   if (!key) {
@@ -16,49 +17,80 @@ export default async function handler(req, res) {
     });
   }
 
-  // Negara default: Indonesia
+  // Ambil parameter dari frontend
   const country = req.query.country || "indo";
+  const service = req.query.service || "";
 
   try {
-    // Request ke API VirtuSIM
-    const url =
-      `https://virtusim.com/api/v2/json.php` +
-      `?api_key=${encodeURIComponent(key)}` +
-      `&action=services` +
-      `&country=Russia&service=`;
+    // Buat URL VirtuSIM
+    const params = new URLSearchParams({
+      api_key: key,
+      action: "services",
+      country,
+      service,
+    });
 
+    const url = `https://virtusim.com/api/v2/json.php?${params}`;
+
+    console.log("VirtuSIM Request:", {
+      country,
+      service,
+    });
+
+    // Request ke VirtuSIM
     const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(
+        `VirtuSIM HTTP ${response.status}`
+      );
+    }
+
     const data = await response.json();
 
-    // Jika VirtuSIM mengembalikan error
+    // Periksa response VirtuSIM
     if (!data.status) {
       return res.status(502).json({
         success: false,
-        message: data?.data?.msg || "VirtuSIM error",
+        message:
+          data?.data?.msg ||
+          "VirtuSIM mengembalikan error",
       });
     }
 
-    // Tambahkan markup harga
-    const markup = Number(process.env.PRICE_MARKUP || 0);
+    // Markup harga
+    const markup = Number(
+      process.env.PRICE_MARKUP || 0
+    );
 
-    data.data = (data.data || []).map((item) => ({
+    // Format produk
+    const products = (data.data || []).map((item) => ({
       ...item,
 
-      // Harga asli dari VirtuSIM
       basePrice: Number(item.price || 0),
 
-      // Harga setelah markup
-      price: Number(item.price || 0) + markup,
+      price:
+        Number(item.price || 0) +
+        markup,
     }));
 
-    // Kirim response ke frontend
-    return res.status(200).json(data);
+    // Response ke frontend
+    return res.status(200).json({
+      success: true,
+      country,
+      service,
+      products,
+    });
   } catch (error) {
-    console.error("VirtuSIM API Error:", error);
+    console.error(
+      "VirtuSIM API Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Gagal menghubungi VirtuSIM",
+      message:
+        "Gagal menghubungi VirtuSIM",
     });
   }
 }
