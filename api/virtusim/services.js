@@ -3,7 +3,6 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       success: false,
-      message: "Method tidak diizinkan",
     });
   }
 
@@ -22,30 +21,29 @@ export default async function handler(req, res) {
   const service = req.query.service || "";
 
   try {
-    // Buat URL VirtuSIM
+    // Parameter VirtuSIM
     const params = new URLSearchParams({
       api_key: key,
       action: "services",
-      country,
-      service,
+      country: country,
+      service: service,
     });
 
-    const url = `https://virtusim.com/api/v2/json.php?${params}`;
-
-    console.log("VirtuSIM Request:", {
-      country,
-      service,
-    });
+    // Endpoint VirtuSIM
+    const url =
+      `https://virtusim.com/api/v2/json.php?${params.toString()}`;
 
     // Request ke VirtuSIM
     const response = await fetch(url);
 
+    // Pastikan HTTP response berhasil
     if (!response.ok) {
       throw new Error(
         `VirtuSIM HTTP ${response.status}`
       );
     }
 
+    // Parse JSON
     const data = await response.json();
 
     // Periksa response VirtuSIM
@@ -54,7 +52,7 @@ export default async function handler(req, res) {
         success: false,
         message:
           data?.data?.msg ||
-          "VirtuSIM mengembalikan error",
+          "VirtuSIM error",
       });
     }
 
@@ -63,24 +61,26 @@ export default async function handler(req, res) {
       process.env.PRICE_MARKUP || 0
     );
 
-    // Format produk
-    const products = (data.data || []).map((item) => ({
+    // Tambahkan harga jual
+    data.data = (data.data || []).map((item) => ({
       ...item,
 
-      basePrice: Number(item.price || 0),
+      // Harga asli VirtuSIM
+      basePrice: Number(
+        item.price || 0
+      ),
 
+      // Harga setelah markup
       price:
         Number(item.price || 0) +
         markup,
     }));
 
-    // Response ke frontend
-    return res.status(200).json({
-      success: true,
-      country,
-      service,
-      products,
-    });
+    // PENTING:
+    // Response tetap menggunakan struktur
+    // VirtuSIM seperti sebelumnya.
+    return res.status(200).json(data);
+
   } catch (error) {
     console.error(
       "VirtuSIM API Error:",
