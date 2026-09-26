@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       api_key: key,
       action: "services",
       country: country,
-      service: Whatsapp,
+      service: "Whatsapp",
     });
 
     // Endpoint VirtuSIM
